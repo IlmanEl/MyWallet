@@ -1,0 +1,77 @@
+{
+  "expense": [
+    {
+      "name": "Еда и напитки",
+      "emoji": "🍔",
+      "subcategories": [
+        {"name": "Рестораны", "emoji": "🍽️"},
+        {"name": "Продукты", "emoji": "🛒"},
+        {"name": "Кафе", "emoji": "☕"}
+      ]
+    },
+    {
+      "name": "Транспорт",
+      "emoji": "🚗",
+      "subcategories": [
+        {"name": "Такси", "emoji": "🚕"},
+        {"name": "Общественный транспорт", "emoji": "🚌"},
+        {"name": "Бензин", "emoji": "⛽"}
+      ]
+    },
+    {
+      "name": "Здоровье",
+      "emoji": "🏥",
+      "subcategories": [
+        {"name": "Аптеки", "emoji": "💊"},
+        {"name": "Врачи", "emoji": "👨‍⚕️"},
+        {"name": "Анализы", "emoji": "🔬"}
+      ]
+    },
+    {
+      "name": "Дом",
+      "emoji": "🏠",
+      "subcategories": [
+        {"name": "Коммунальные услуги", "emoji": "💡"},
+        {"name": "Ремонт", "emoji": "🔨"},
+        {"name": "Мебель", "emoji": "🛋️"}
+      ]
+    },
+    {
+      "name": "Работа/Бизнес",
+      "emoji": "💼",
+      "subcategories": [
+        {"name": "Материалы", "emoji": "📦"},
+        {"name": "Инструменты", "emoji": "🔧"},
+        {"name": "Партнерам", "emoji": "🤝"}
+      ]
+    },
+    {
+      "name": "Образование",
+      "emoji": "📚",
+      "subcategories": [
+        {"name": "Курсы", "emoji": "🎓"},
+        {"name": "Книги", "emoji": "📖"}
+      ]
+    },
+    {"name": "Развлечения", "emoji": "🎮"},
+    {"name": "Одежда", "emoji": "👕"},
+    {"name": "Подарки", "emoji": "🎁"},
+    {"name": "Переводы", "emoji": "💸"},
+    {"name": "Другое", "emoji": "📌"}
+  ],
+  "income": [
+    {"name": "Зарплата", "emoji": "💰"},
+    {
+      "name": "Проекты",
+      "emoji": "💼",
+      "subcategories": [
+        {"name": "3D модели", "emoji": "🎨"},
+        {"name": "AI агенты", "emoji": "🤖"},
+        {"name": "Фриланс", "emoji": "💻"}
+      ]
+    },
+    {"name": "Подарки", "emoji": "🎁"},
+    {"name": "Инвестиции", "emoji": "📈"},
+    {"name": "Другое", "emoji": "📌"}
+  ]
+}
