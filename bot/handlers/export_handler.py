@@ -37,7 +37,8 @@ async def export_period_callback(update: Update, context: ContextTypes.DEFAULT_T
         'period_day': 'day',
         'period_week': 'week',
         'period_month': 'month',
-        'period_year': 'year'
+        'period_year': 'year',
+        'period_all': 'all'
     }
 
     period = period_map.get(query.data, 'month')

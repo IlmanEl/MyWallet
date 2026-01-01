@@ -351,14 +351,14 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show current balance by currency"""
+    """Show current balance showing where money is stored"""
     user_id = Config.USER_TELEGRAM_ID
     balances = db.get_balance(user_id)
 
     if not balances:
         message = "📭 У вас пока нет транзакций"
     else:
-        message = "💼 <b>Ваш баланс:</b>\n\n"
+        message = "💼 <b>Текущий баланс - где деньги:</b>\n\n"
 
         currency_symbols = {
             'UAH': '₴',
@@ -366,44 +366,45 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'EUR': '€'
         }
 
-        # Store totals for summary
-        totals = {}
+        # Разделяем гривны и доллары
+        if 'UAH' in balances:
+            data = balances['UAH']
+            symbol = currency_symbols['UAH']
 
-        for currency, data in balances.items():
-            symbol = currency_symbols.get(currency, currency)
+            message += f"<b>💳 Гривны ({symbol})</b>\n"
+            message += f"━━━━━━━━━━━━━━━\n"
+            message += f"  • На карте: {data['card_balance']:.2f} {symbol}\n"
+            message += f"  • Наличкой: {data['cash_balance']:.2f} {symbol}\n"
+            message += f"  <b>━ ВСЕГО: {data['balance']:.2f} {symbol}</b>\n\n"
 
-            message += f"<b>{currency} ({symbol})</b>\n"
+        if 'USD' in balances:
+            data = balances['USD']
+            symbol = currency_symbols['USD']
+
+            message += f"<b>💵 Доллары (проектные) ({symbol})</b>\n"
             message += f"━━━━━━━━━━━━━━━\n"
 
-            # Личные финансы
-            if data['personal_income'] > 0 or data['personal_expense'] > 0:
-                message += f"👤 <b>Личные:</b>\n"
-                message += f"  💰 Доход: {data['personal_income']:.2f} {symbol}\n"
-                message += f"  💸 Расход: {data['personal_expense']:.2f} {symbol}\n"
-                message += f"  📊 Баланс: <b>{data['personal_balance']:.2f} {symbol}</b>\n\n"
+            # Для долларов показываем общий баланс и сколько зарезервировано
+            total_usd = data['cash_balance']  # Все доллары наличкой
+            reserved = data.get('reserved_for_partners', 0)
+            available = total_usd + reserved  # Потому что reserved вычитается из cash_balance
 
-            # Командные финансы
-            if data['team_income'] > 0 or data['team_expense'] > 0:
-                message += f"👥 <b>Командные:</b>\n"
-                message += f"  💰 Доход: {data['team_income']:.2f} {symbol}\n"
-                message += f"  💸 Расход: {data['team_expense']:.2f} {symbol}\n"
-                message += f"  📊 Баланс: <b>{data['team_balance']:.2f} {symbol}</b>\n\n"
+            message += f"  • Всего: {available:.2f} {symbol}\n"
+            if reserved > 0:
+                message += f"  • Зарезервировано партнерам: {reserved:.2f} {symbol}\n"
+                message += f"  <b>━ Доступно: {total_usd:.2f} {symbol}</b>\n\n"
+            else:
+                message += f"  <b>━ Доступно: {total_usd:.2f} {symbol}</b>\n\n"
 
-            # Общий баланс по валюте
-            message += f"📈 <b>Итого {currency}: {data['balance']:.2f} {symbol}</b>\n\n"
-
-            # Store for final summary
-            totals[currency] = {
-                'balance': data['balance'],
-                'symbol': symbol
-            }
-
-        # ИТОГОВАЯ СВОДКА
-        if totals:
-            message += "━━━━━━━━━━━━━━━━━━━━━\n"
-            message += "💰 <b>ИТОГО У ВАС:</b>\n"
-            for currency, info in totals.items():
-                message += f"  • {info['balance']:.2f} {info['symbol']}\n"
+        # Итоговая сводка
+        message += "━━━━━━━━━━━━━━━━━━━━━\n"
+        message += "💰 <b>ИТОГО:</b>\n"
+        if 'UAH' in balances:
+            message += f"  • {balances['UAH']['balance']:.2f} {currency_symbols['UAH']}\n"
+        if 'USD' in balances:
+            total_usd = balances['USD']['cash_balance']
+            reserved = balances['USD'].get('reserved_for_partners', 0)
+            message += f"  • {(total_usd + reserved):.2f} {currency_symbols['USD']} (проектные)\n"
 
     # Handle both message and callback query
     if update.message:

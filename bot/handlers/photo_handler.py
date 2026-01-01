@@ -6,6 +6,7 @@ from services.categorization_service import categorization_service
 from services.database import db
 from models.transaction import Transaction
 from utils.config import Config
+from utils.date_helper import get_current_date
 from datetime import datetime
 import logging
 import os
@@ -61,7 +62,7 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
             category=receipt_data.get('category', 'Другое'),
             description=f"Магазин: {receipt_data.get('store', 'неизвестно')}",
             payment_method='card',  # Assume card for receipt
-            date=datetime.now(),
+            date=get_current_date(),  # Формат ДД.ММ.ГГГГ
             user_telegram_id=Config.USER_TELEGRAM_ID,
             ai_categorized=True,
             receipt_image_url=receipt_url

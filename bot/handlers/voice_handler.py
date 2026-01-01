@@ -7,6 +7,7 @@ from services.categorization_service import categorization_service
 from services.database import db
 from models.transaction import Transaction
 from utils.config import Config
+from utils.date_helper import get_current_date
 from datetime import datetime
 import logging
 import os
@@ -66,7 +67,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
             category=parsed.get('category', 'Другое'),
             description=parsed.get('description', transcription),
             payment_method=parsed.get('payment_method'),
-            date=datetime.now(),
+            date=get_current_date(),  # Формат ДД.ММ.ГГГГ
             user_telegram_id=Config.USER_TELEGRAM_ID,
             ai_categorized=True,
             voice_transcription=transcription
