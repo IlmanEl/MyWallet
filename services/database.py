@@ -107,7 +107,7 @@ class Database:
             return False
 
     def get_balance(self, user_id: int) -> Dict:
-        """Get current balance by currency (total income - total expenses)"""
+        """Get current balance by currency and payment method (where money is stored)"""
         try:
             transactions = self.get_transactions(user_id, limit=10000)
 
@@ -117,21 +117,33 @@ class Database:
             for t in transactions:
                 currency = t.get('currency', 'UAH')
                 is_team = t.get('is_team_finance', False)
+                category = t.get('category', '')
+                description = t.get('description', '').lower()
+                payment_method = t.get('payment_method', '').lower() if t.get('payment_method') else None
 
                 if currency not in balances:
                     balances[currency] = {
                         'income': 0,
                         'expense': 0,
                         'balance': 0,
+                        'card_balance': 0,
+                        'cash_balance': 0,
                         'personal_income': 0,
                         'personal_expense': 0,
                         'personal_balance': 0,
                         'team_income': 0,
                         'team_expense': 0,
-                        'team_balance': 0
+                        'team_balance': 0,
+                        'reserved_for_partners': 0
                     }
 
                 amount = t['amount']
+
+                # Skip internal transfers (наличные на карту)
+                is_internal_transfer = (
+                    category == 'Переводы' and
+                    ('на карту' in description or 'налич' in description and 'карт' in description)
+                )
 
                 if t['type'] == 'income':
                     balances[currency]['income'] += amount
@@ -139,12 +151,32 @@ class Database:
                         balances[currency]['team_income'] += amount
                     else:
                         balances[currency]['personal_income'] += amount
-                else:
-                    balances[currency]['expense'] += amount
-                    if is_team:
-                        balances[currency]['team_expense'] += amount
+
+                    # Determine where money came (card or cash)
+                    if payment_method == 'card' or payment_method == 'карта':
+                        balances[currency]['card_balance'] += amount
                     else:
-                        balances[currency]['personal_expense'] += amount
+                        balances[currency]['cash_balance'] += amount
+
+                elif not is_internal_transfer:  # Only count real expenses, not internal transfers
+                    # For partner transfers from team projects - track as reserved
+                    if category == 'Партнерам':
+                        balances[currency]['reserved_for_partners'] += amount
+                        # Don't count as expense since it's project money
+                        if is_team:
+                            balances[currency]['team_expense'] += amount
+                    else:
+                        balances[currency]['expense'] += amount
+                        if is_team:
+                            balances[currency]['team_expense'] += amount
+                        else:
+                            balances[currency]['personal_expense'] += amount
+
+                    # Determine where money was spent from (card or cash)
+                    if payment_method == 'card' or payment_method == 'карта':
+                        balances[currency]['card_balance'] -= amount
+                    else:
+                        balances[currency]['cash_balance'] -= amount
 
                 # Calculate balances
                 balances[currency]['balance'] = balances[currency]['income'] - balances[currency]['expense']
@@ -154,7 +186,7 @@ class Database:
             return balances
         except Exception as e:
             logger.error(f"Error calculating balance: {e}")
-            return {'total_income': 0, 'total_expense': 0, 'balance': 0}
+            return {}
 
     # ===== CATEGORIES =====
 
