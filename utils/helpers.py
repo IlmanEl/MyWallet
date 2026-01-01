@@ -25,7 +25,7 @@ def format_currency(amount: float, currency: str = "грн") -> str:
 def get_date_range(period: str) -> Tuple[datetime, datetime]:
     """
     Get date range for different periods
-    period: 'day', 'week', 'month', 'year'
+    period: 'day', 'week', 'month', 'year', 'all'
     """
     now = datetime.now()
 
@@ -41,6 +41,10 @@ def get_date_range(period: str) -> Tuple[datetime, datetime]:
         end = now
     elif period == 'year':
         start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif period == 'all':
+        # За все время - начало с 2020 года
+        start = datetime(2020, 1, 1)
         end = now
     else:
         raise ValueError(f"Invalid period: {period}")
