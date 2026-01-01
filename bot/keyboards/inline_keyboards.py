@@ -118,6 +118,9 @@ class Keyboards:
                 InlineKeyboardButton("📅 Год", callback_data="period_year")
             ],
             [
+                InlineKeyboardButton("📊 Все время", callback_data="period_all")
+            ],
+            [
                 InlineKeyboardButton("◀️ Назад", callback_data="back_main")
             ]
         ]
