@@ -19,6 +19,10 @@ class Transaction:
     receipt_image_url: Optional[str] = None
     id: Optional[str] = None
     created_at: Optional[datetime] = None
+    currency: str = 'UAH'  # UAH, USD, EUR
+    original_amount: Optional[float] = None
+    original_currency: Optional[str] = None
+    is_team_finance: bool = False
 
     def to_dict(self) -> dict:
         """Convert to dictionary for database insertion"""
@@ -26,6 +30,8 @@ class Transaction:
             'amount': self.amount,
             'type': self.type,
             'category': self.category,
+            'currency': self.currency,
+            'is_team_finance': self.is_team_finance,
         }
 
         if self.description:
@@ -44,6 +50,10 @@ class Transaction:
             data['voice_transcription'] = self.voice_transcription
         if self.receipt_image_url:
             data['receipt_image_url'] = self.receipt_image_url
+        if self.original_amount:
+            data['original_amount'] = self.original_amount
+        if self.original_currency:
+            data['original_currency'] = self.original_currency
 
         return data
 
@@ -64,4 +74,8 @@ class Transaction:
             ai_categorized=data.get('ai_categorized', False),
             voice_transcription=data.get('voice_transcription'),
             receipt_image_url=data.get('receipt_image_url'),
+            currency=data.get('currency', 'UAH'),
+            original_amount=data.get('original_amount'),
+            original_currency=data.get('original_currency'),
+            is_team_finance=data.get('is_team_finance', False),
         )

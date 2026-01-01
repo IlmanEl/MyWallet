@@ -61,6 +61,22 @@ class Database:
             logger.error(f"Error fetching transactions: {e}")
             return []
 
+    def get_recent_transactions(self, user_id: int, limit: int = 10) -> List[Dict]:
+        """Get most recent transactions"""
+        try:
+            response = (
+                self.client.table('transactions')
+                .select('*')
+                .eq('user_telegram_id', user_id)
+                .order('created_at', desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return response.data
+        except Exception as e:
+            logger.error(f"Error fetching recent transactions: {e}")
+            return []
+
     def get_transaction_by_id(self, transaction_id: str) -> Optional[Dict]:
         """Get a single transaction by ID"""
         try:
@@ -90,20 +106,52 @@ class Database:
             logger.error(f"Error deleting transaction: {e}")
             return False
 
-    def get_balance(self, user_id: int) -> Dict[str, float]:
-        """Get current balance (total income - total expenses)"""
+    def get_balance(self, user_id: int) -> Dict:
+        """Get current balance by currency (total income - total expenses)"""
         try:
             transactions = self.get_transactions(user_id, limit=10000)
 
-            total_income = sum(t['amount'] for t in transactions if t['type'] == 'income')
-            total_expense = sum(t['amount'] for t in transactions if t['type'] == 'expense')
-            balance = total_income - total_expense
+            # Group by currency
+            balances = {}
 
-            return {
-                'total_income': total_income,
-                'total_expense': total_expense,
-                'balance': balance
-            }
+            for t in transactions:
+                currency = t.get('currency', 'UAH')
+                is_team = t.get('is_team_finance', False)
+
+                if currency not in balances:
+                    balances[currency] = {
+                        'income': 0,
+                        'expense': 0,
+                        'balance': 0,
+                        'personal_income': 0,
+                        'personal_expense': 0,
+                        'personal_balance': 0,
+                        'team_income': 0,
+                        'team_expense': 0,
+                        'team_balance': 0
+                    }
+
+                amount = t['amount']
+
+                if t['type'] == 'income':
+                    balances[currency]['income'] += amount
+                    if is_team:
+                        balances[currency]['team_income'] += amount
+                    else:
+                        balances[currency]['personal_income'] += amount
+                else:
+                    balances[currency]['expense'] += amount
+                    if is_team:
+                        balances[currency]['team_expense'] += amount
+                    else:
+                        balances[currency]['personal_expense'] += amount
+
+                # Calculate balances
+                balances[currency]['balance'] = balances[currency]['income'] - balances[currency]['expense']
+                balances[currency]['personal_balance'] = balances[currency]['personal_income'] - balances[currency]['personal_expense']
+                balances[currency]['team_balance'] = balances[currency]['team_income'] - balances[currency]['team_expense']
+
+            return balances
         except Exception as e:
             logger.error(f"Error calculating balance: {e}")
             return {'total_income': 0, 'total_expense': 0, 'balance': 0}

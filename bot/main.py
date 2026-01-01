@@ -20,6 +20,7 @@ from bot.handlers.transaction_handler import (
     add_expense_callback,
     add_income_callback,
     receive_amount,
+    receive_currency_callback,
     receive_category_callback,
     receive_description,
     receive_payment_method_callback,
@@ -29,9 +30,43 @@ from bot.handlers.transaction_handler import (
     cancel_conversation,
     balance_command,
     AMOUNT,
+    CURRENCY,
     CATEGORY,
     DESCRIPTION,
     PAYMENT_METHOD
+)
+from bot.handlers.manage_handler import (
+    delete_command,
+    delete_callback,
+    confirm_delete_callback,
+    edit_command,
+    edit_callback,
+    show_edit_options_callback,
+    toggle_team_finance_callback
+)
+from bot.handlers.category_handler import (
+    categories_callback,
+    list_categories_callback,
+    add_category_start,
+    receive_category_name,
+    receive_category_type,
+    receive_category_emoji,
+    cancel_category_creation,
+    CATEGORY_NAME,
+    CATEGORY_TYPE,
+    CATEGORY_EMOJI
+)
+from bot.handlers.exchange_handler import (
+    exchange_start,
+    receive_from_currency,
+    receive_from_amount,
+    receive_to_currency,
+    receive_to_amount,
+    cancel_exchange,
+    FROM_CURRENCY,
+    FROM_AMOUNT,
+    TO_CURRENCY,
+    TO_AMOUNT
 )
 from bot.handlers.voice_handler import handle_voice_message
 from bot.handlers.photo_handler import handle_photo_message
@@ -77,11 +112,39 @@ def main():
         ],
         states={
             AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_amount)],
+            CURRENCY: [CallbackQueryHandler(receive_currency_callback, pattern='^currency_')],
             CATEGORY: [CallbackQueryHandler(receive_category_callback, pattern='^cat_')],
             DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_description)],
             PAYMENT_METHOD: [CallbackQueryHandler(receive_payment_method_callback, pattern='^payment_')],
         },
         fallbacks=[CommandHandler('cancel', cancel_conversation)],
+    )
+
+    # === CONVERSATION HANDLER FOR ADDING CATEGORIES ===
+    category_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(add_category_start, pattern='^add_category$'),
+        ],
+        states={
+            CATEGORY_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_category_name)],
+            CATEGORY_TYPE: [CallbackQueryHandler(receive_category_type, pattern='^cattype_')],
+            CATEGORY_EMOJI: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_category_emoji)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel_category_creation)],
+    )
+
+    # === CONVERSATION HANDLER FOR CURRENCY EXCHANGE ===
+    exchange_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(exchange_start, pattern='^exchange$'),
+        ],
+        states={
+            FROM_CURRENCY: [CallbackQueryHandler(receive_from_currency, pattern='^exchange_from_')],
+            FROM_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_from_amount)],
+            TO_CURRENCY: [CallbackQueryHandler(receive_to_currency, pattern='^exchange_to_')],
+            TO_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_to_amount)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel_exchange)],
     )
 
     # === COMMAND HANDLERS ===
@@ -90,9 +153,13 @@ def main():
     application.add_handler(CommandHandler('balance', balance_command))
     application.add_handler(CommandHandler('stats', stats_command))
     application.add_handler(CommandHandler('export', export_command))
+    application.add_handler(CommandHandler('delete', delete_command))
+    application.add_handler(CommandHandler('edit', edit_command))
 
-    # === CONVERSATION HANDLER ===
+    # === CONVERSATION HANDLERS ===
     application.add_handler(transaction_conv_handler)
+    application.add_handler(category_conv_handler)
+    application.add_handler(exchange_conv_handler)
 
     # === CALLBACK QUERY HANDLERS ===
     # Main menu navigation
@@ -124,6 +191,17 @@ def main():
     # Transaction confirmation
     application.add_handler(CallbackQueryHandler(save_transaction_callback, pattern='^save_transaction$'))
     application.add_handler(CallbackQueryHandler(cancel_transaction_callback, pattern='^cancel_transaction$'))
+
+    # Delete and Edit handlers
+    application.add_handler(CallbackQueryHandler(delete_callback, pattern='^delete$'))
+    application.add_handler(CallbackQueryHandler(confirm_delete_callback, pattern='^delete_tx_'))
+    application.add_handler(CallbackQueryHandler(edit_callback, pattern='^edit$'))
+    application.add_handler(CallbackQueryHandler(show_edit_options_callback, pattern='^edit_tx_'))
+    application.add_handler(CallbackQueryHandler(toggle_team_finance_callback, pattern='^toggle_team_'))
+
+    # Category handlers
+    application.add_handler(CallbackQueryHandler(categories_callback, pattern='^categories$'))
+    application.add_handler(CallbackQueryHandler(list_categories_callback, pattern='^list_categories$'))
 
     # === MESSAGE HANDLERS ===
     # Voice messages

@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Conversation states
-AMOUNT, CATEGORY, DESCRIPTION, PAYMENT_METHOD = range(4)
+AMOUNT, CURRENCY, CATEGORY, DESCRIPTION, PAYMENT_METHOD = range(5)
 
 
 async def add_expense_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,21 +49,45 @@ async def receive_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         amount = float(update.message.text.replace(',', '.').replace(' ', ''))
         context.user_data['amount'] = amount
 
-        transaction_type = context.user_data.get('transaction_type', 'expense')
-        categories = db.get_categories(category_type=transaction_type)
-
         await update.message.reply_text(
-            f"Сумма: {amount} грн\n\nТеперь выберите категорию:",
-            reply_markup=Keyboards.category_selection(categories)
+            f"Сумма: {amount}\n\nВыберите валюту:",
+            reply_markup=Keyboards.currency_selection()
         )
 
-        return CATEGORY
+        return CURRENCY
 
     except ValueError:
         await update.message.reply_text(
             "Некорректная сумма. Попробуйте еще раз (например: 500 или 1200.50):"
         )
         return AMOUNT
+
+
+async def receive_currency_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Receive currency selection and ask for description"""
+    query = update.callback_query
+    await query.answer()
+
+    currency_map = {
+        'currency_uah': 'UAH',
+        'currency_usd': 'USD',
+        'currency_eur': 'EUR'
+    }
+
+    currency = currency_map.get(query.data, 'UAH')
+    context.user_data['currency'] = currency
+
+    currency_symbol = "₴" if currency == 'UAH' else "$" if currency == 'USD' else "€"
+    amount = context.user_data.get('amount', 0)
+
+    await query.edit_message_text(
+        f"Сумма: {amount} {currency_symbol}\n\n"
+        f"📝 Введите описание транзакции (например: такси, продукты, зарплата):\n\n"
+        f"<i>AI автоматически определит категорию</i>",
+        parse_mode='HTML'
+    )
+
+    return DESCRIPTION
 
 
 async def receive_category_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -88,18 +112,84 @@ async def receive_category_callback(update: Update, context: ContextTypes.DEFAUL
 
 
 async def receive_description(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Receive description from user"""
-    description = update.message.text
+    """Receive description and auto-categorize with AI (if category not already set)"""
+    description = update.message.text.strip()
 
-    if description != '/skip':
-        context.user_data['description'] = description
+    # Check if category already selected manually
+    if 'category' in context.user_data:
+        # Category already set - just save description and proceed
+        if description and description != '/skip':
+            context.user_data['description'] = description
 
-    await update.message.reply_text(
-        "Выберите способ оплаты:",
-        reply_markup=Keyboards.payment_method()
-    )
+        await update.message.reply_text(
+            "Выберите способ оплаты:",
+            reply_markup=Keyboards.payment_method()
+        )
+        return PAYMENT_METHOD
 
-    return PAYMENT_METHOD
+    # No category yet - use AI to categorize based on description
+    if not description or description == '/skip':
+        # No description - show category selection
+        transaction_type = context.user_data.get('transaction_type', 'expense')
+        categories = db.get_categories(category_type=transaction_type)
+
+        await update.message.reply_text(
+            "Выберите категорию:",
+            reply_markup=Keyboards.category_selection(categories)
+        )
+        return CATEGORY
+
+    context.user_data['description'] = description
+
+    # Use AI to categorize
+    try:
+        await update.message.reply_text("🤖 AI анализирует...")
+
+        transaction_type = context.user_data.get('transaction_type', 'expense')
+        expense_categories = categorization_service.get_available_categories('expense')
+        income_categories = categorization_service.get_available_categories('income')
+        all_categories = expense_categories + income_categories
+
+        # Get AI suggestion
+        parsed = ai_service.parse_natural_language_transaction(description, all_categories)
+
+        if parsed and parsed.get('category'):
+            suggested_category = parsed['category']
+            context.user_data['category'] = suggested_category
+            context.user_data['ai_categorized'] = True
+
+            # Also update description if AI extracted better one
+            if parsed.get('description'):
+                context.user_data['description'] = parsed['description']
+
+            await update.message.reply_text(
+                f"✅ AI предложил категорию: <b>{suggested_category}</b>\n\n"
+                f"Выберите способ оплаты:",
+                reply_markup=Keyboards.payment_method(),
+                parse_mode='HTML'
+            )
+
+            return PAYMENT_METHOD
+
+        else:
+            # AI failed, show manual selection
+            categories = db.get_categories(category_type=transaction_type)
+            await update.message.reply_text(
+                "❌ AI не смог определить категорию.\n\nВыберите вручную:",
+                reply_markup=Keyboards.category_selection(categories)
+            )
+            return CATEGORY
+
+    except Exception as e:
+        logger.error(f"AI categorization error: {e}")
+        # Fallback to manual
+        transaction_type = context.user_data.get('transaction_type', 'expense')
+        categories = db.get_categories(category_type=transaction_type)
+        await update.message.reply_text(
+            "❌ Ошибка AI. Выберите категорию вручную:",
+            reply_markup=Keyboards.category_selection(categories)
+        )
+        return CATEGORY
 
 
 async def receive_payment_method_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,7 +215,8 @@ async def receive_payment_method_callback(update: Update, context: ContextTypes.
         payment_method=payment_method,
         date=datetime.now(),
         user_telegram_id=Config.USER_TELEGRAM_ID,
-        ai_categorized=False
+        ai_categorized=context.user_data.get('ai_categorized', False),
+        currency=context.user_data.get('currency', 'UAH')
     )
 
     # Save to database
@@ -135,9 +226,16 @@ async def receive_payment_method_callback(update: Update, context: ContextTypes.
     type_emoji = "💸" if transaction.type == "expense" else "💰"
     type_text = "Расход" if transaction.type == "expense" else "Доход"
 
+    currency_symbols = {
+        'UAH': '₴',
+        'USD': '$',
+        'EUR': '€'
+    }
+    currency_symbol = currency_symbols.get(transaction.currency, transaction.currency)
+
     summary = f"""✅ Транзакция добавлена!
 
-{type_emoji} {type_text}: {transaction.amount} грн
+{type_emoji} {type_text}: {transaction.amount} {currency_symbol}
 📁 Категория: {transaction.category}
 💳 Способ: {payment_method}"""
 
@@ -253,15 +351,62 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show current balance"""
+    """Show current balance by currency"""
     user_id = Config.USER_TELEGRAM_ID
-    balance_data = db.get_balance(user_id)
+    balances = db.get_balance(user_id)
 
-    message = f"""💼 Ваш баланс:
+    if not balances:
+        message = "📭 У вас пока нет транзакций"
+    else:
+        message = "💼 <b>Ваш баланс:</b>\n\n"
 
-💰 Всего доходов: {balance_data['total_income']:.2f} грн
-💸 Всего расходов: {balance_data['total_expense']:.2f} грн
+        currency_symbols = {
+            'UAH': '₴',
+            'USD': '$',
+            'EUR': '€'
+        }
 
-📊 Баланс: {balance_data['balance']:.2f} грн"""
+        # Store totals for summary
+        totals = {}
 
-    await update.message.reply_text(message, reply_markup=Keyboards.back_to_main())
+        for currency, data in balances.items():
+            symbol = currency_symbols.get(currency, currency)
+
+            message += f"<b>{currency} ({symbol})</b>\n"
+            message += f"━━━━━━━━━━━━━━━\n"
+
+            # Личные финансы
+            if data['personal_income'] > 0 or data['personal_expense'] > 0:
+                message += f"👤 <b>Личные:</b>\n"
+                message += f"  💰 Доход: {data['personal_income']:.2f} {symbol}\n"
+                message += f"  💸 Расход: {data['personal_expense']:.2f} {symbol}\n"
+                message += f"  📊 Баланс: <b>{data['personal_balance']:.2f} {symbol}</b>\n\n"
+
+            # Командные финансы
+            if data['team_income'] > 0 or data['team_expense'] > 0:
+                message += f"👥 <b>Командные:</b>\n"
+                message += f"  💰 Доход: {data['team_income']:.2f} {symbol}\n"
+                message += f"  💸 Расход: {data['team_expense']:.2f} {symbol}\n"
+                message += f"  📊 Баланс: <b>{data['team_balance']:.2f} {symbol}</b>\n\n"
+
+            # Общий баланс по валюте
+            message += f"📈 <b>Итого {currency}: {data['balance']:.2f} {symbol}</b>\n\n"
+
+            # Store for final summary
+            totals[currency] = {
+                'balance': data['balance'],
+                'symbol': symbol
+            }
+
+        # ИТОГОВАЯ СВОДКА
+        if totals:
+            message += "━━━━━━━━━━━━━━━━━━━━━\n"
+            message += "💰 <b>ИТОГО У ВАС:</b>\n"
+            for currency, info in totals.items():
+                message += f"  • {info['balance']:.2f} {info['symbol']}\n"
+
+    # Handle both message and callback query
+    if update.message:
+        await update.message.reply_text(message, reply_markup=Keyboards.back_to_main(), parse_mode='HTML')
+    elif update.callback_query:
+        await update.callback_query.message.edit_text(message, reply_markup=Keyboards.back_to_main(), parse_mode='HTML')

@@ -13,8 +13,15 @@ class Keyboards:
                 InlineKeyboardButton("💰 Добавить доход", callback_data="add_income")
             ],
             [
+                InlineKeyboardButton("💱 Обмен валюты", callback_data="exchange")
+            ],
+            [
                 InlineKeyboardButton("📊 Статистика", callback_data="stats"),
                 InlineKeyboardButton("💼 Баланс", callback_data="balance")
+            ],
+            [
+                InlineKeyboardButton("✏️ Редактировать", callback_data="edit"),
+                InlineKeyboardButton("🗑️ Удалить", callback_data="delete")
             ],
             [
                 InlineKeyboardButton("📁 Категории", callback_data="categories"),
@@ -68,15 +75,29 @@ class Keyboards:
         return InlineKeyboardMarkup(keyboard)
 
     @staticmethod
+    def currency_selection():
+        """Currency selection"""
+        keyboard = [
+            [
+                InlineKeyboardButton("₴ Гривна (UAH)", callback_data="currency_uah"),
+                InlineKeyboardButton("$ Доллар (USD)", callback_data="currency_usd")
+            ],
+            [
+                InlineKeyboardButton("€ Евро (EUR)", callback_data="currency_eur")
+            ],
+            [
+                InlineKeyboardButton("◀️ Назад", callback_data="back_main")
+            ]
+        ]
+        return InlineKeyboardMarkup(keyboard)
+
+    @staticmethod
     def payment_method():
         """Payment method selection"""
         keyboard = [
             [
                 InlineKeyboardButton("💵 Наличные", callback_data="payment_cash"),
                 InlineKeyboardButton("💳 Карта", callback_data="payment_card")
-            ],
-            [
-                InlineKeyboardButton("🔄 Перевод", callback_data="payment_transfer")
             ],
             [
                 InlineKeyboardButton("◀️ Назад", callback_data="back_main")
