@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Create tables using direct PostgreSQL connection
-"""
+
 
 import os
 import psycopg2
