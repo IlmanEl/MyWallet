@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-Direct database creation using Supabase Python client
-"""
 
 import os
 from supabase import create_client
