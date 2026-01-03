@@ -1,7 +1,3 @@
-"""
-Data Migration Script for MyWallet
-Imports financial transactions from unstructured notes
-"""
 
 import json
 import logging
