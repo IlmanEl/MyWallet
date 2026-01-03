@@ -1,7 +1,4 @@
-"""
-Import Historical Financial Data
-Скрипт для внесения всех предыдущих записей в базу данных (2025 год)
-"""
+
 
 import os
 from supabase import create_client, Client
