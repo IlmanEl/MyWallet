@@ -351,14 +351,14 @@ async def cancel_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show current balance showing where money is stored"""
+    """Show current balance - simple and clear"""
     user_id = Config.USER_TELEGRAM_ID
     balances = db.get_balance(user_id)
 
     if not balances:
         message = "📭 У вас пока нет транзакций"
     else:
-        message = "💼 <b>Текущий баланс - где деньги:</b>\n\n"
+        message = "💼 <b>Ваш баланс:</b>\n\n"
 
         currency_symbols = {
             'UAH': '₴',
@@ -366,45 +366,14 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'EUR': '€'
         }
 
-        # Разделяем гривны и доллары
-        if 'UAH' in balances:
-            data = balances['UAH']
-            symbol = currency_symbols['UAH']
+        for currency, data in balances.items():
+            symbol = currency_symbols.get(currency, currency)
 
-            message += f"<b>💳 Гривны ({symbol})</b>\n"
+            message += f"<b>{currency} ({symbol})</b>\n"
             message += f"━━━━━━━━━━━━━━━\n"
-            message += f"  • На карте: {data['card_balance']:.2f} {symbol}\n"
-            message += f"  • Наличкой: {data['cash_balance']:.2f} {symbol}\n"
-            message += f"  <b>━ ВСЕГО: {data['balance']:.2f} {symbol}</b>\n\n"
-
-        if 'USD' in balances:
-            data = balances['USD']
-            symbol = currency_symbols['USD']
-
-            message += f"<b>💵 Доллары (проектные) ({symbol})</b>\n"
-            message += f"━━━━━━━━━━━━━━━\n"
-
-            # Для долларов показываем общий баланс и сколько зарезервировано
-            total_usd = data['cash_balance']  # Все доллары наличкой
-            reserved = data.get('reserved_for_partners', 0)
-            available = total_usd + reserved  # Потому что reserved вычитается из cash_balance
-
-            message += f"  • Всего: {available:.2f} {symbol}\n"
-            if reserved > 0:
-                message += f"  • Зарезервировано партнерам: {reserved:.2f} {symbol}\n"
-                message += f"  <b>━ Доступно: {total_usd:.2f} {symbol}</b>\n\n"
-            else:
-                message += f"  <b>━ Доступно: {total_usd:.2f} {symbol}</b>\n\n"
-
-        # Итоговая сводка
-        message += "━━━━━━━━━━━━━━━━━━━━━\n"
-        message += "💰 <b>ИТОГО:</b>\n"
-        if 'UAH' in balances:
-            message += f"  • {balances['UAH']['balance']:.2f} {currency_symbols['UAH']}\n"
-        if 'USD' in balances:
-            total_usd = balances['USD']['cash_balance']
-            reserved = balances['USD'].get('reserved_for_partners', 0)
-            message += f"  • {(total_usd + reserved):.2f} {currency_symbols['USD']} (проектные)\n"
+            message += f"  💰 Доход: {data['income']:.2f} {symbol}\n"
+            message += f"  💸 Расход: {data['expense']:.2f} {symbol}\n"
+            message += f"  <b>📊 Баланс: {data['balance']:.2f} {symbol}</b>\n\n"
 
     # Handle both message and callback query
     if update.message:
