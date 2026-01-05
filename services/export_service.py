@@ -145,15 +145,20 @@ class ExportService:
         """Create sheet with monthly summary"""
         ws = wb.create_sheet("Месячная сводка")
 
-        balance_data = db.get_balance(user_id)
+        balances = db.get_balance(user_id)
 
         ws.append(["Месячная сводка"])
         ws.append([])
         ws.append(["Период:", f"{start_date.strftime('%d.%m.%Y')} - {end_date.strftime('%d.%m.%Y')}"])
         ws.append([])
-        ws.append(["Общий доход:", balance_data['total_income']])
-        ws.append(["Общий расход:", balance_data['total_expense']])
-        ws.append(["Баланс:", balance_data['balance']])
+
+        # Показываем баланс по каждой валюте
+        for currency, data in balances.items():
+            ws.append([f"=== {currency} ==="])
+            ws.append(["Доход:", data['income']])
+            ws.append(["Расход:", data['expense']])
+            ws.append(["Баланс:", data['balance']])
+            ws.append([])
 
 
 export_service = ExportService()
