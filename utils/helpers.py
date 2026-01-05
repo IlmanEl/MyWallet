@@ -69,3 +69,13 @@ def truncate_text(text: str, max_length: int = 100) -> str:
     if len(text) <= max_length:
         return text
     return text[:max_length - 3] + '...'
+
+
+def get_currency_symbol(currency: str) -> str:
+    """Get currency symbol"""
+    symbols = {
+        'UAH': '₴',
+        'USD': '$',
+        'EUR': '€'
+    }
+    return symbols.get(currency, currency)
