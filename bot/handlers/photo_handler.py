@@ -6,6 +6,7 @@ from services.categorization_service import categorization_service
 from services.database import db
 from models.transaction import Transaction
 from utils.config import Config
+from utils.helpers import get_currency_symbol
 from utils.date_helper import get_current_date
 from datetime import datetime
 import logging
@@ -79,7 +80,7 @@ async def handle_photo_message(update: Update, context: ContextTypes.DEFAULT_TYP
         # Confirmation message
         confirmation = f"""📸 Чек обработан:
 
-💸 Сумма: {transaction.amount} грн
+💸 Сумма: {transaction.amount} {get_currency_symbol(transaction.currency)}
 📅 Дата: {receipt_data.get('date', 'сегодня')}
 🏪 Магазин: {receipt_data.get('store', 'неизвестно')}
 📁 Категория: {transaction.category}{items_text}
