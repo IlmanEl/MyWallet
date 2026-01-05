@@ -8,6 +8,7 @@ from services.database import db
 from models.transaction import Transaction
 from utils.config import Config
 from utils.date_helper import get_current_date
+from utils.helpers import get_currency_symbol
 from datetime import datetime
 import logging
 import os
@@ -76,12 +77,13 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
         # Confirmation message
         type_emoji = "💸" if transaction.type == "expense" else "💰"
         type_text = "Расход" if transaction.type == "expense" else "Доход"
+        currency_symbol = get_currency_symbol(transaction.currency)
 
         confirmation = f"""🎤 Распознано:
 
 📝 Текст: "{transcription}"
 
-{type_emoji} {type_text}: {transaction.amount} грн
+{type_emoji} {type_text}: {transaction.amount} {currency_symbol}
 📁 Категория: {transaction.category}
 
 Сохранить?"""
