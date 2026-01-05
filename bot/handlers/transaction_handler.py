@@ -47,6 +47,20 @@ async def receive_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Receive amount from user"""
     try:
         amount = float(update.message.text.replace(',', '.').replace(' ', ''))
+
+        # Валидация
+        if amount <= 0:
+            await update.message.reply_text(
+                "❌ Сумма должна быть больше нуля. Попробуйте еще раз:"
+            )
+            return AMOUNT
+
+        if amount > 1_000_000_000:
+            await update.message.reply_text(
+                "❌ Сумма слишком большая. Попробуйте еще раз:"
+            )
+            return AMOUNT
+
         context.user_data['amount'] = amount
 
         await update.message.reply_text(
@@ -294,7 +308,7 @@ async def process_text_transaction(update: Update, context: ContextTypes.DEFAULT
 
     confirmation = f"""🤖 Распознано:
 
-{type_emoji} {type_text}: {transaction.amount} грн
+{type_emoji} {type_text}: {transaction.amount} {get_currency_symbol(parsed.get("currency", "UAH"))}
 📁 Категория: {transaction.category}
 📝 Описание: {transaction.description}
 
